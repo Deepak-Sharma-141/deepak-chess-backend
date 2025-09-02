@@ -1,0 +1,49 @@
+# application.yml
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: chess-multiplayer
+
+  # WebSocket configuration
+  websocket:
+    allowed-origins: "*"
+    heartbeat-interval: 25000
+    heartbeat-timeout: 60000
+
+  # Database configuration (optional - for future use)
+  datasource:
+    url: jdbc:h2:mem:chessdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# Logging
+logging:
+  level:
+    com.chess.multiplayer: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Custom application properties
+chess:
+  game:
+    max-games: 1000
+    cleanup-interval: 3600000 # 1 hour in milliseconds
+    inactive-timeout: 300000  # 5 minutes in milliseconds
