@@ -1,25 +1,34 @@
-# Step 1: Use Maven image to build the project
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# ========================
+# 1. Build Stage
+# ========================
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
+
+# Set working directory
 WORKDIR /app
 
-# Copy only pom.xml first
-COPY chess-multiplayer/pom.xml .
+# Copy pom.xml and download dependencies first (to use Docker cache)
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-# Copy the entire source code
-COPY chess-multiplayer/src ./src
+# Copy the rest of the source code
+COPY src ./src
 
-# Build the project
+# Package the application (skip tests for faster builds; remove -DskipTests if needed)
 RUN mvn clean package -DskipTests
 
-# Step 2: Use lightweight JDK image to run the app
-FROM eclipse-temurin:17-jdk
+# ========================
+# 2. Runtime Stage
+# ========================
+FROM eclipse-temurin:21-jdk
+
+# Set working directory
 WORKDIR /app
 
-# Copy the jar from the build stage
-COPY --from=build /app/target/*.jar app.jar
+# Copy jar file from builder
+COPY --from=builder /app/target/*.jar app.jar
 
-# Expose Spring Boot default port
+# Expose port (same as in application.yml, usually 8080)
 EXPOSE 8080
 
-# Run the jar
+# Run the app
 ENTRYPOINT ["java", "-jar", "app.jar"]
