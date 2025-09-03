@@ -19,11 +19,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/chess-websocket")
-                .setAllowedOriginPatterns(
-                        "https://deepak-sharma-141.github.io",  // Correct: just the origin, no path
-                        "http://localhost:*",
-                        "https://localhost:*"
-                )
+                .setAllowedOriginPatterns("*")  // Allow all origins for now
                 .withSockJS()
                 .setStreamBytesLimit(512 * 1024)
                 .setHttpMessageCacheSize(1000)
