@@ -1,4 +1,3 @@
-// CorsConfig.java
 package com.chess.multiplayer.config;
 
 import org.springframework.context.annotation.Bean;
@@ -17,18 +16,32 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("https://deepak-sharma-141.github.io/deepak-chess-frontend/")
+                .allowedOriginPatterns("https://deepak-sharma-141.github.io")  // Remove the trailing path
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*");
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+
+        // Use specific origins instead of wildcard when allowCredentials is true
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "https://deepak-sharma-141.github.io",
+                "http://localhost:*",
+                "https://localhost:*"
+        ));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
+
+        // Important: Expose headers for WebSocket handshake
+        configuration.setExposedHeaders(Arrays.asList(
+                "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Credentials"
+        ));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

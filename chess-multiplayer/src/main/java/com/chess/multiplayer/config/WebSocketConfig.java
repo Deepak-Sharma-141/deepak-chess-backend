@@ -1,4 +1,3 @@
-// WebSocketConfig.java
 package com.chess.multiplayer.config;
 
 import org.springframework.context.annotation.Configuration;
@@ -20,7 +19,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/chess-websocket")
-                .setAllowedOrigins("https://deepak-sharma-141.github.io/deepak-chess-frontend/")
-                .withSockJS();
+                .setAllowedOriginPatterns(
+                        "https://deepak-sharma-141.github.io",  // Correct: just the origin, no path
+                        "http://localhost:*",
+                        "https://localhost:*"
+                )
+                .withSockJS()
+                .setStreamBytesLimit(512 * 1024)
+                .setHttpMessageCacheSize(1000)
+                .setDisconnectDelay(30 * 1000);
     }
 }
