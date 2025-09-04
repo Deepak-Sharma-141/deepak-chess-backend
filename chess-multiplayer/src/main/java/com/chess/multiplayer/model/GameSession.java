@@ -18,6 +18,8 @@ public class GameSession {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String winner; // null, "white", "black", "draw"
+    private String drawOfferBy; // playerId who offered the draw
+    private LocalDateTime drawOfferTime; // when the draw was offered
 
     public GameSession() {
         this.moveHistory = new ArrayList<>();
@@ -94,4 +96,19 @@ public class GameSession {
 
     public String getWinner() { return winner; }
     public void setWinner(String winner) { this.winner = winner; }
+
+    public String getDrawOfferBy() { return drawOfferBy; }
+    public void setDrawOfferBy(String drawOfferBy) { this.drawOfferBy = drawOfferBy; }
+
+    public LocalDateTime getDrawOfferTime() { return drawOfferTime; }
+    public void setDrawOfferTime(LocalDateTime drawOfferTime) { this.drawOfferTime = drawOfferTime; }
+
+    public boolean hasDrawOffer() {
+        return drawOfferBy != null && drawOfferTime != null;
+    }
+
+    public void clearDrawOffer() {
+        this.drawOfferBy = null;
+        this.drawOfferTime = null;
+    }
 }

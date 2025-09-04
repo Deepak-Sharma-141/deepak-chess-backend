@@ -110,6 +110,124 @@ public class GameController {
         messagingTemplate.convertAndSend("/topic/game/" + gameId, notification);
     }
 
+    @MessageMapping("/game/{gameId}/resign")
+    public void resignGame(@DestinationVariable String gameId, GameMessage message) {
+        try {
+            if (!gameService.isPlayerInGame(message.getPlayerId(), gameId)) {
+                GameMessage error = new GameMessage("error", gameId);
+                error.setError("You are not authorized to resign from this game.");
+                messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
+                return;
+            }
+
+            GameSession updatedGame = gameService.resignGame(gameId, message.getPlayerId());
+
+            if (updatedGame != null) {
+                // Broadcast resignation to all players
+                GameMessage resignationNotification = new GameMessage("resign", gameId);
+                resignationNotification.setPlayerId(message.getPlayerId());
+                resignationNotification.setPlayerName(message.getPlayerName());
+                resignationNotification.setGameState(updatedGame);
+                messagingTemplate.convertAndSend("/topic/game/" + gameId, resignationNotification);
+
+                // Send game end notification
+                GameMessage gameEnd = new GameMessage("gameEnd", gameId);
+                gameEnd.setGameState(updatedGame);
+                messagingTemplate.convertAndSend("/topic/game/" + gameId, gameEnd);
+            }
+        } catch (Exception e) {
+            GameMessage error = new GameMessage("error", gameId);
+            error.setError("An error occurred while resigning: " + e.getMessage());
+            messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
+        }
+    }
+
+    @MessageMapping("/game/{gameId}/draw-offer")
+    public void offerDraw(@DestinationVariable String gameId, GameMessage message) {
+        try {
+            if (!gameService.isPlayerInGame(message.getPlayerId(), gameId)) {
+                GameMessage error = new GameMessage("error", gameId);
+                error.setError("You are not authorized to offer a draw in this game.");
+                messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
+                return;
+            }
+
+            GameSession updatedGame = gameService.offerDraw(gameId, message.getPlayerId());
+
+            if (updatedGame != null) {
+                // Broadcast draw offer to all players
+                GameMessage drawOfferNotification = new GameMessage("drawOffer", gameId);
+                drawOfferNotification.setPlayerId(message.getPlayerId());
+                drawOfferNotification.setPlayerName(message.getPlayerName());
+                drawOfferNotification.setGameState(updatedGame);
+                messagingTemplate.convertAndSend("/topic/game/" + gameId, drawOfferNotification);
+            }
+        } catch (Exception e) {
+            GameMessage error = new GameMessage("error", gameId);
+            error.setError("An error occurred while offering a draw: " + e.getMessage());
+            messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
+        }
+    }
+
+    @MessageMapping("/game/{gameId}/draw-accept")
+    public void acceptDraw(@DestinationVariable String gameId, GameMessage message) {
+        try {
+            if (!gameService.isPlayerInGame(message.getPlayerId(), gameId)) {
+                GameMessage error = new GameMessage("error", gameId);
+                error.setError("You are not authorized to accept a draw in this game.");
+                messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
+                return;
+            }
+
+            GameSession updatedGame = gameService.acceptDraw(gameId, message.getPlayerId());
+
+            if (updatedGame != null) {
+                // Broadcast draw acceptance to all players
+                GameMessage drawAcceptNotification = new GameMessage("drawAccept", gameId);
+                drawAcceptNotification.setPlayerId(message.getPlayerId());
+                drawAcceptNotification.setPlayerName(message.getPlayerName());
+                drawAcceptNotification.setGameState(updatedGame);
+                messagingTemplate.convertAndSend("/topic/game/" + gameId, drawAcceptNotification);
+
+                // Send game end notification
+                GameMessage gameEnd = new GameMessage("gameEnd", gameId);
+                gameEnd.setGameState(updatedGame);
+                messagingTemplate.convertAndSend("/topic/game/" + gameId, gameEnd);
+            }
+        } catch (Exception e) {
+            GameMessage error = new GameMessage("error", gameId);
+            error.setError("An error occurred while accepting the draw: " + e.getMessage());
+            messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
+        }
+    }
+
+    @MessageMapping("/game/{gameId}/draw-decline")
+    public void declineDraw(@DestinationVariable String gameId, GameMessage message) {
+        try {
+            if (!gameService.isPlayerInGame(message.getPlayerId(), gameId)) {
+                GameMessage error = new GameMessage("error", gameId);
+                error.setError("You are not authorized to decline a draw in this game.");
+                messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
+                return;
+            }
+
+            GameSession updatedGame = gameService.declineDraw(gameId, message.getPlayerId());
+
+            if (updatedGame != null) {
+                // Broadcast draw decline to all players
+                GameMessage drawDeclineNotification = new GameMessage("drawDecline", gameId);
+                drawDeclineNotification.setPlayerId(message.getPlayerId());
+                drawDeclineNotification.setPlayerName(message.getPlayerName());
+                drawDeclineNotification.setGameState(updatedGame);
+                messagingTemplate.convertAndSend("/topic/game/" + gameId, drawDeclineNotification);
+            }
+        } catch (Exception e) {
+            GameMessage error = new GameMessage("error", gameId);
+            error.setError("An error occurred while declining the draw: " + e.getMessage());
+            messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
+        }
+    }
+
     @SubscribeMapping("/game/{gameId}")
     public GameMessage getGameState(@DestinationVariable String gameId) {
         GameSession game = gameService.getGame(gameId);
