@@ -64,7 +64,16 @@ public class GameController {
     @MessageMapping("/game/{gameId}/move")
     public void makeMove(@DestinationVariable String gameId, GameMessage message) {
         try {
+            System.out.println("Received move request for game: " + gameId);
+            System.out.println("Player ID: " + message.getPlayerId());
+            System.out.println("Move: " + (message.getMove() != null ? 
+                "fromRow=" + message.getMove().getFromRow() + 
+                ", fromCol=" + message.getMove().getFromCol() + 
+                ", toRow=" + message.getMove().getToRow() + 
+                ", toCol=" + message.getMove().getToCol() : "null"));
+
             if (!gameService.isPlayerInGame(message.getPlayerId(), gameId)) {
+                System.out.println("Player not in game: " + message.getPlayerId());
                 GameMessage error = new GameMessage("error", gameId);
                 error.setError("You are not authorized to make moves in this game.");
                 messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
@@ -72,6 +81,7 @@ public class GameController {
             }
 
             boolean moveSuccessful = gameService.makeMove(gameId, message.getPlayerId(), message.getMove());
+            System.out.println("Move successful: " + moveSuccessful);
 
             if (moveSuccessful) {
                 GameSession updatedGame = gameService.getGame(gameId);
@@ -89,11 +99,14 @@ public class GameController {
                     messagingTemplate.convertAndSend("/topic/game/" + gameId, gameEnd);
                 }
             } else {
+                System.out.println("Move failed - sending error");
                 GameMessage error = new GameMessage("error", gameId);
                 error.setError("Invalid move or not your turn.");
                 messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);
             }
         } catch (Exception e) {
+            System.out.println("Exception in makeMove: " + e.getMessage());
+            e.printStackTrace();
             GameMessage error = new GameMessage("error", gameId);
             error.setError("An error occurred while making the move: " + e.getMessage());
             messagingTemplate.convertAndSend("/topic/game/" + gameId + "/player/" + message.getPlayerId(), error);

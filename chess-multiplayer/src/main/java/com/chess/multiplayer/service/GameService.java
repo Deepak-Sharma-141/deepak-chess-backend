@@ -32,22 +32,37 @@ public class GameService {
     }
 
     public GameSession joinGame(String gameId, String playerId, String playerName) {
+        System.out.println("Joining game: " + gameId + " with player: " + playerId + " (" + playerName + ")");
+        
         GameSession game = games.get(gameId);
-        if (game == null) return null;
+        if (game == null) {
+            System.out.println("Game not found: " + gameId);
+            return null;
+        }
 
         Player player = new Player(playerId, playerName);
 
         if (game.getWhitePlayer() == null) {
+            System.out.println("Setting white player: " + playerId);
             game.setWhitePlayer(player);
         } else if (game.getBlackPlayer() == null) {
+            System.out.println("Setting black player: " + playerId);
             game.setBlackPlayer(player);
             game.setGameStatus("active");
+            System.out.println("Game is now active with both players");
         } else {
+            System.out.println("Game is full");
             return null; // Game is full
         }
 
         playerToGame.put(playerId, gameId);
         game.setUpdatedAt(LocalDateTime.now());
+        
+        System.out.println("Game state after join - White: " + (game.getWhitePlayer() != null ? game.getWhitePlayer().getId() : "null") + 
+                          ", Black: " + (game.getBlackPlayer() != null ? game.getBlackPlayer().getId() : "null") + 
+                          ", Status: " + game.getGameStatus() + 
+                          ", Current Turn: " + game.getCurrentTurn());
+        
         return game;
     }
 
@@ -62,19 +77,34 @@ public class GameService {
     }
 
     public boolean makeMove(String gameId, String playerId, Move move) {
+        System.out.println("GameService.makeMove called for game: " + gameId + ", player: " + playerId);
+        
         GameSession game = games.get(gameId);
-        if (game == null || !"active".equals(game.getGameStatus())) {
+        if (game == null) {
+            System.out.println("Game not found: " + gameId);
+            return false;
+        }
+        
+        if (!"active".equals(game.getGameStatus())) {
+            System.out.println("Game not active, status: " + game.getGameStatus());
             return false;
         }
 
         // Validate it's player's turn
         Player currentPlayer = game.getPlayerByColor(game.getCurrentTurn());
-        if (currentPlayer == null || !currentPlayer.getId().equals(playerId)) {
+        if (currentPlayer == null) {
+            System.out.println("No current player found for turn: " + game.getCurrentTurn());
+            return false;
+        }
+        
+        if (!currentPlayer.getId().equals(playerId)) {
+            System.out.println("Not player's turn. Current player: " + currentPlayer.getId() + ", requesting player: " + playerId);
             return false;
         }
 
         // Validate the move
         if (!isValidMove(game, move)) {
+            System.out.println("Move validation failed");
             return false;
         }
 
@@ -105,6 +135,9 @@ public class GameService {
 
     private boolean isValidMove(GameSession game, Move move) {
         try {
+            System.out.println("Validating move: fromRow=" + move.getFromRow() + ", fromCol=" + move.getFromCol() + 
+                             ", toRow=" + move.getToRow() + ", toCol=" + move.getToCol());
+            
             // Parse current board state
             Map<String, Object> boardState = objectMapper.readValue(game.getBoardState(), Map.class);
             String[][] board = (String[][]) boardState.get("board");
@@ -114,31 +147,40 @@ public class GameService {
                 move.getFromCol() < 0 || move.getFromCol() > 7 ||
                 move.getToRow() < 0 || move.getToRow() > 7 || 
                 move.getToCol() < 0 || move.getToCol() > 7) {
+                System.out.println("Move coordinates out of bounds");
                 return false;
             }
             
             // Check if there's a piece at the source
             String piece = board[move.getFromRow()][move.getFromCol()];
             if (piece == null) {
+                System.out.println("No piece at source position");
                 return false;
             }
+            
+            System.out.println("Piece at source: " + piece);
             
             // Check if it's the player's piece
             String pieceColor = piece.split("_")[0];
             if (!pieceColor.equals(game.getCurrentTurn())) {
+                System.out.println("Piece color mismatch. Piece: " + pieceColor + ", Current turn: " + game.getCurrentTurn());
                 return false;
             }
             
             // Check if destination is not occupied by own piece
             String destinationPiece = board[move.getToRow()][move.getToCol()];
             if (destinationPiece != null && destinationPiece.split("_")[0].equals(pieceColor)) {
+                System.out.println("Destination occupied by own piece");
                 return false;
             }
             
+            System.out.println("Move validation passed");
             // Basic move validation (you can expand this with full chess rules)
             return true;
             
         } catch (Exception e) {
+            System.out.println("Exception in isValidMove: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -335,13 +377,13 @@ public class GameService {
         // Place pieces
         String[] backRow = {"rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"};
 
-        // Black pieces
+        // Black pieces (top of board)
         for (int i = 0; i < 8; i++) {
             board[0][i] = "black_" + backRow[i];
             board[1][i] = "black_pawn";
         }
 
-        // White pieces
+        // White pieces (bottom of board)
         for (int i = 0; i < 8; i++) {
             board[6][i] = "white_pawn";
             board[7][i] = "white_" + backRow[i];
@@ -351,8 +393,11 @@ public class GameService {
         boardState.put("currentPlayer", "white");
 
         try {
-            return objectMapper.writeValueAsString(boardState);
+            String result = objectMapper.writeValueAsString(boardState);
+            System.out.println("Initialized board state: " + result);
+            return result;
         } catch (JsonProcessingException e) {
+            System.out.println("Error initializing board state: " + e.getMessage());
             return "{}";
         }
     }
