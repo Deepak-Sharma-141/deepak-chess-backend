@@ -33,7 +33,7 @@ public class GameService {
 
     public GameSession joinGame(String gameId, String playerId, String playerName) {
         System.out.println("Joining game: " + gameId + " with player: " + playerId + " (" + playerName + ")");
-        
+
         GameSession game = games.get(gameId);
         if (game == null) {
             System.out.println("Game not found: " + gameId);
@@ -57,12 +57,12 @@ public class GameService {
 
         playerToGame.put(playerId, gameId);
         game.setUpdatedAt(LocalDateTime.now());
-        
-        System.out.println("Game state after join - White: " + (game.getWhitePlayer() != null ? game.getWhitePlayer().getId() : "null") + 
-                          ", Black: " + (game.getBlackPlayer() != null ? game.getBlackPlayer().getId() : "null") + 
-                          ", Status: " + game.getGameStatus() + 
-                          ", Current Turn: " + game.getCurrentTurn());
-        
+
+        System.out.println("Game state after join - White: " + (game.getWhitePlayer() != null ? game.getWhitePlayer().getId() : "null") +
+                ", Black: " + (game.getBlackPlayer() != null ? game.getBlackPlayer().getId() : "null") +
+                ", Status: " + game.getGameStatus() +
+                ", Current Turn: " + game.getCurrentTurn());
+
         return game;
     }
 
@@ -78,13 +78,13 @@ public class GameService {
 
     public boolean makeMove(String gameId, String playerId, Move move) {
         System.out.println("GameService.makeMove called for game: " + gameId + ", player: " + playerId);
-        
+
         GameSession game = games.get(gameId);
         if (game == null) {
             System.out.println("Game not found: " + gameId);
             return false;
         }
-        
+
         if (!"active".equals(game.getGameStatus())) {
             System.out.println("Game not active, status: " + game.getGameStatus());
             return false;
@@ -96,7 +96,7 @@ public class GameService {
             System.out.println("No current player found for turn: " + game.getCurrentTurn());
             return false;
         }
-        
+
         if (!currentPlayer.getId().equals(playerId)) {
             System.out.println("Not player's turn. Current player: " + currentPlayer.getId() + ", requesting player: " + playerId);
             return false;
@@ -135,49 +135,60 @@ public class GameService {
 
     private boolean isValidMove(GameSession game, Move move) {
         try {
-            System.out.println("Validating move: fromRow=" + move.getFromRow() + ", fromCol=" + move.getFromCol() + 
-                             ", toRow=" + move.getToRow() + ", toCol=" + move.getToCol());
-            
+            System.out.println("Validating move: fromRow=" + move.getFromRow() + ", fromCol=" + move.getFromCol() +
+                    ", toRow=" + move.getToRow() + ", toCol=" + move.getToCol());
+
             // Parse current board state
             Map<String, Object> boardState = objectMapper.readValue(game.getBoardState(), Map.class);
-            String[][] board = (String[][]) boardState.get("board");
-            
+
+            // Properly cast the board array
+            @SuppressWarnings("unchecked")
+            List<List<String>> boardList = (List<List<String>>) boardState.get("board");
+            String[][] board = new String[8][8];
+
+            // Convert List<List<String>> to String[][]
+            for (int i = 0; i < 8; i++) {
+                List<String> row = boardList.get(i);
+                for (int j = 0; j < 8; j++) {
+                    board[i][j] = row.get(j);
+                }
+            }
+
             // Basic validation
-            if (move.getFromRow() < 0 || move.getFromRow() > 7 || 
-                move.getFromCol() < 0 || move.getFromCol() > 7 ||
-                move.getToRow() < 0 || move.getToRow() > 7 || 
-                move.getToCol() < 0 || move.getToCol() > 7) {
+            if (move.getFromRow() < 0 || move.getFromRow() > 7 ||
+                    move.getFromCol() < 0 || move.getFromCol() > 7 ||
+                    move.getToRow() < 0 || move.getToRow() > 7 ||
+                    move.getToCol() < 0 || move.getToCol() > 7) {
                 System.out.println("Move coordinates out of bounds");
                 return false;
             }
-            
+
             // Check if there's a piece at the source
             String piece = board[move.getFromRow()][move.getFromCol()];
             if (piece == null) {
                 System.out.println("No piece at source position");
                 return false;
             }
-            
+
             System.out.println("Piece at source: " + piece);
-            
+
             // Check if it's the player's piece
             String pieceColor = piece.split("_")[0];
             if (!pieceColor.equals(game.getCurrentTurn())) {
                 System.out.println("Piece color mismatch. Piece: " + pieceColor + ", Current turn: " + game.getCurrentTurn());
                 return false;
             }
-            
+
             // Check if destination is not occupied by own piece
             String destinationPiece = board[move.getToRow()][move.getToCol()];
             if (destinationPiece != null && destinationPiece.split("_")[0].equals(pieceColor)) {
                 System.out.println("Destination occupied by own piece");
                 return false;
             }
-            
+
             System.out.println("Move validation passed");
-            // Basic move validation (you can expand this with full chess rules)
             return true;
-            
+
         } catch (Exception e) {
             System.out.println("Exception in isValidMove: " + e.getMessage());
             e.printStackTrace();
@@ -189,7 +200,7 @@ public class GameService {
         // This is a simplified check - you would implement full chess logic here
         // For now, we'll just check if the game has been going on for too long
         // In a real implementation, you'd check for checkmate, stalemate, etc.
-        
+
         if (game.getMoveHistory().size() > 1000) { // Arbitrary limit
             game.setGameStatus("finished");
             game.setWinner("draw");
@@ -200,28 +211,54 @@ public class GameService {
         try {
             // Parse current board state
             Map<String, Object> boardState = objectMapper.readValue(game.getBoardState(), Map.class);
-            String[][] board = (String[][]) boardState.get("board");
-            
+
+            // Properly handle the board array
+            @SuppressWarnings("unchecked")
+            List<List<String>> boardList = (List<List<String>>) boardState.get("board");
+            String[][] board = new String[8][8];
+
+            // Convert List<List<String>> to String[][]
+            for (int i = 0; i < 8; i++) {
+                List<String> row = boardList.get(i);
+                for (int j = 0; j < 8; j++) {
+                    board[i][j] = row.get(j);
+                }
+            }
+
             // Apply the move
             String piece = board[move.getFromRow()][move.getFromCol()];
             board[move.getToRow()][move.getToCol()] = piece;
             board[move.getFromRow()][move.getFromCol()] = null;
-            
+
             // Handle special moves (castling, en passant, promotion)
             if (move.getPromotedTo() != null) {
                 String color = piece.split("_")[0];
                 board[move.getToRow()][move.getToCol()] = color + "_" + move.getPromotedTo();
             }
-            
+
+            // Convert String[][] back to List<List<String>>
+            List<List<String>> updatedBoardList = new ArrayList<>();
+            for (int i = 0; i < 8; i++) {
+                List<String> row = new ArrayList<>();
+                for (int j = 0; j < 8; j++) {
+                    row.add(board[i][j]);
+                }
+                updatedBoardList.add(row);
+            }
+
             // Update board state
-            boardState.put("board", board);
+            boardState.put("board", updatedBoardList);
             boardState.put("currentPlayer", game.getCurrentTurn());
-            
+
             // Update the game's board state
             game.setBoardState(objectMapper.writeValueAsString(boardState));
             game.setUpdatedAt(LocalDateTime.now());
-            
+
+            System.out.println("Board state updated successfully");
+
         } catch (Exception e) {
+            System.out.println("Error updating board state: " + e.getMessage());
+            e.printStackTrace();
             // If there's an error parsing/updating board state, just update timestamp
             game.setUpdatedAt(LocalDateTime.now());
         }
@@ -237,6 +274,8 @@ public class GameService {
 
     public boolean isPlayerInGame(String playerId, String gameId) {
         return gameId.equals(playerToGame.get(playerId));
+
+
     }
 
     public void disconnectPlayer(String playerId) {
@@ -365,13 +404,17 @@ public class GameService {
     private String initializeBoardState() {
         // Initialize a standard chess board
         Map<String, Object> boardState = new HashMap<>();
-        String[][] board = new String[8][8];
+
+        // Use List<List<String>> for consistent JSON serialization
+        List<List<String>> board = new ArrayList<>();
 
         // Initialize empty board
         for (int i = 0; i < 8; i++) {
+            List<String> row = new ArrayList<>();
             for (int j = 0; j < 8; j++) {
-                board[i][j] = null;
+                row.add(null);
             }
+            board.add(row);
         }
 
         // Place pieces
@@ -379,14 +422,14 @@ public class GameService {
 
         // Black pieces (top of board)
         for (int i = 0; i < 8; i++) {
-            board[0][i] = "black_" + backRow[i];
-            board[1][i] = "black_pawn";
+            board.get(0).set(i, "black_" + backRow[i]);
+            board.get(1).set(i, "black_pawn");
         }
 
         // White pieces (bottom of board)
         for (int i = 0; i < 8; i++) {
-            board[6][i] = "white_pawn";
-            board[7][i] = "white_" + backRow[i];
+            board.get(6).set(i, "white_pawn");
+            board.get(7).set(i, "white_" + backRow[i]);
         }
 
         boardState.put("board", board);
