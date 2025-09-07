@@ -20,17 +20,18 @@ public class MatchmakingService {
 
     private final ConcurrentLinkedQueue<WaitingPlayer> waitingQueue = new ConcurrentLinkedQueue<>();
     private final Map<String, WaitingPlayer> sessionToPlayer = new ConcurrentHashMap<>();
-    private final GameService gameService;
-    private final SimpMessagingTemplate messagingTemplate;
+
+    // Change from constructor injection to field injection to break circular dependency
+    @Autowired
+    private GameService gameService;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     // Timeout in milliseconds (2 minutes)
     private static final long MATCH_TIMEOUT = 120000;
 
-    @Autowired
-    public MatchmakingService(GameService gameService, SimpMessagingTemplate messagingTemplate) {
-        this.gameService = gameService;
-        this.messagingTemplate = messagingTemplate;
-    }
+    // Remove constructor - Spring will use default constructor and field injection
 
     @Async
     public CompletableFuture<MatchResult> findRandomMatch(String sessionId, String playerName) {
@@ -174,39 +175,55 @@ public class MatchmakingService {
 
     // WebSocket message sending methods
     private void sendWaitingMessage(String sessionId) {
-        Map<String, Object> message = new HashMap<>();
-        message.put("type", "WAITING_FOR_OPPONENT");
-        message.put("message", "Searching for an opponent...");
-        message.put("queueSize", waitingQueue.size());
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "WAITING_FOR_OPPONENT");
+            message.put("message", "Searching for an opponent...");
+            message.put("queueSize", waitingQueue.size());
 
-        messagingTemplate.convertAndSendToUser(sessionId, "/queue/match", message);
+            messagingTemplate.convertAndSendToUser(sessionId, "/queue/match", message);
+        } catch (Exception e) {
+            System.out.println("Error sending waiting message: " + e.getMessage());
+        }
     }
 
     private void sendMatchFoundMessage(WaitingPlayer player, String gameId, String playerColor, String opponentName, GameSession game) {
-        Map<String, Object> message = new HashMap<>();
-        message.put("type", "MATCH_FOUND");
-        message.put("gameId", gameId);
-        message.put("playerColor", playerColor);
-        message.put("opponentName", opponentName);
-        message.put("gameState", game);
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "MATCH_FOUND");
+            message.put("gameId", gameId);
+            message.put("playerColor", playerColor);
+            message.put("opponentName", opponentName);
+            message.put("gameState", game);
 
-        messagingTemplate.convertAndSendToUser(player.getSessionId(), "/queue/match", message);
+            messagingTemplate.convertAndSendToUser(player.getSessionId(), "/queue/match", message);
+        } catch (Exception e) {
+            System.out.println("Error sending match found message: " + e.getMessage());
+        }
     }
 
     private void sendMatchCancelledMessage(String sessionId, String reason) {
-        Map<String, Object> message = new HashMap<>();
-        message.put("type", "MATCH_CANCELLED");
-        message.put("reason", reason);
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "MATCH_CANCELLED");
+            message.put("reason", reason);
 
-        messagingTemplate.convertAndSendToUser(sessionId, "/queue/match", message);
+            messagingTemplate.convertAndSendToUser(sessionId, "/queue/match", message);
+        } catch (Exception e) {
+            System.out.println("Error sending match cancelled message: " + e.getMessage());
+        }
     }
 
     private void sendMatchTimeoutMessage(String sessionId) {
-        Map<String, Object> message = new HashMap<>();
-        message.put("type", "MATCH_TIMEOUT");
-        message.put("reason", "No opponent found within the time limit. Please try again.");
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "MATCH_TIMEOUT");
+            message.put("reason", "No opponent found within the time limit. Please try again.");
 
-        messagingTemplate.convertAndSendToUser(sessionId, "/queue/match", message);
+            messagingTemplate.convertAndSendToUser(sessionId, "/queue/match", message);
+        } catch (Exception e) {
+            System.out.println("Error sending match timeout message: " + e.getMessage());
+        }
     }
 
     // Get current queue status
@@ -227,5 +244,3 @@ public class MatchmakingService {
         return status;
     }
 }
-
-// Supporting classes
