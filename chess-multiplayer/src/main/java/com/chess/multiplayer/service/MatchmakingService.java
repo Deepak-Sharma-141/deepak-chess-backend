@@ -20,7 +20,7 @@ public class MatchmakingService {
 
     private final ConcurrentLinkedQueue<WaitingPlayer> waitingQueue = new ConcurrentLinkedQueue<>();
     private final Map<String, WaitingPlayer> sessionToPlayer = new ConcurrentHashMap<>();
-
+    private final Object queueLock = new Object();
     // Change from constructor injection to field injection to break circular dependency
     @Autowired
     private GameService gameService;
@@ -36,31 +36,32 @@ public class MatchmakingService {
     @Async
     public CompletableFuture<MatchResult> findRandomMatch(String sessionId, String playerName) {
         System.out.println("Player " + playerName + " (" + sessionId + ") requesting random match");
+        synchronized (queueLock) {
+            // Remove player from queue if already waiting
+            removePlayerFromQueue(sessionId);
 
-        // Remove player from queue if already waiting
-        removePlayerFromQueue(sessionId);
+            // Create waiting player
+            WaitingPlayer currentPlayer = new WaitingPlayer(sessionId, playerName);
+            sessionToPlayer.put(sessionId, currentPlayer);
 
-        // Create waiting player
-        WaitingPlayer currentPlayer = new WaitingPlayer(sessionId, playerName);
-        sessionToPlayer.put(sessionId, currentPlayer);
+            // Try to find an opponent immediately
+            WaitingPlayer opponent = findAvailableOpponent(currentPlayer);
 
-        // Try to find an opponent immediately
-        WaitingPlayer opponent = findAvailableOpponent(currentPlayer);
+            if (opponent != null) {
+                // Match found immediately
+                System.out.println("Immediate match found: " + currentPlayer.getName() + " vs " + opponent.getName());
+                return CompletableFuture.completedFuture(createMatch(currentPlayer, opponent));
+            } else {
+                // Add to waiting queue
+                waitingQueue.offer(currentPlayer);
+                System.out.println("Player " + currentPlayer.getName() + " added to waiting queue. Queue size: " + waitingQueue.size());
 
-        if (opponent != null) {
-            // Match found immediately
-            System.out.println("Immediate match found: " + currentPlayer.getName() + " vs " + opponent.getName());
-            return CompletableFuture.completedFuture(createMatch(currentPlayer, opponent));
-        } else {
-            // Add to waiting queue
-            waitingQueue.offer(currentPlayer);
-            System.out.println("Player " + currentPlayer.getName() + " added to waiting queue. Queue size: " + waitingQueue.size());
+                // Send waiting message
+                sendWaitingMessage(sessionId);
 
-            // Send waiting message
-            sendWaitingMessage(sessionId);
-
-            // Return a future that will complete when match is found or timeout occurs
-            return currentPlayer.getMatchFuture();
+                // Return a future that will complete when match is found or timeout occurs
+                return currentPlayer.getMatchFuture();
+            }
         }
     }
 
