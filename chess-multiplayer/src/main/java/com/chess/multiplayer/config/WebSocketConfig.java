@@ -26,8 +26,5 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setHttpMessageCacheSize(1000)
                 .setDisconnectDelay(30 * 1000);
 
-        // Alternative endpoint without SockJS
-        registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*");
     }
 }
