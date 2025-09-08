@@ -354,9 +354,14 @@ public class MatchmakingService {
 
             // Create game using existing GameService
             String gameId = gameService.createGame(player1.getSessionId(), player1.getName());
-            GameSession game = gameService.joinGame(gameId, player2.getSessionId(), player2.getName());
+            //GameSession game = gameService.joinGame(gameId, player2.getSessionId(), player2.getName());
 
-            if (game != null) {
+            GameSession game = null;
+            if (gameId != null) {
+                game = gameService.joinGame(gameId, player2.getSessionId(), player2.getName());
+            }
+
+            if (game != null && gameId != null) {
                 System.out.println("Match created successfully: Game " + gameId +
                         " - " + player1.getName() + " (" + player1Color + ") vs " +
                         player2.getName() + " (" + player2Color + ")");
@@ -389,10 +394,19 @@ public class MatchmakingService {
             } else {
                 System.out.println("Failed to create game for matched players");
 
-                // Complete both futures with failure
+                sendErrorToPlayer(player1.getSessionId(), "Failed to create game");
+                sendErrorToPlayer(player2.getSessionId(), "Failed to create game");
+
                 MatchResult failResult = new MatchResult(false, "game_creation_failed");
-                player1.getMatchFuture().complete(failResult);
-                player2.getMatchFuture().complete(failResult);
+                completePlayerFuture(player1, failResult);
+                completePlayerFuture(player2, failResult);
+
+
+
+//                // Complete both futures with failure
+//                MatchResult failResult = new MatchResult(false, "game_creation_failed");
+//                player1.getMatchFuture().complete(failResult);
+//                player2.getMatchFuture().complete(failResult);
 
                 return failResult;
             }
@@ -401,16 +415,33 @@ public class MatchmakingService {
             System.out.println("Error creating match: " + e.getMessage());
             e.printStackTrace();
 
-            // Complete both futures with failure
+            sendErrorToPlayer(player1.getSessionId(), "Match creation error");
+            sendErrorToPlayer(player2.getSessionId(), "Match creation error");
+
             MatchResult failResult = new MatchResult(false, "match_creation_error");
-            if (!player1.getMatchFuture().isDone()) {
-                player1.getMatchFuture().complete(failResult);
-            }
-            if (!player2.getMatchFuture().isDone()) {
-                player2.getMatchFuture().complete(failResult);
-            }
+            completePlayerFuture(player1, failResult);
+            completePlayerFuture(player2, failResult);
+
+            // Complete both futures with failure
+//            MatchResult failResult = new MatchResult(false, "match_creation_error");
+//            if (!player1.getMatchFuture().isDone()) {
+//                player1.getMatchFuture().complete(failResult);
+//            }
+//            if (!player2.getMatchFuture().isDone()) {
+//                player2.getMatchFuture().complete(failResult);
+//            }
 
             return failResult;
+        }
+    }
+
+    private void completePlayerFuture(WaitingPlayer player, MatchResult result) {
+        try {
+            if (!player.getMatchFuture().isDone()) {
+                player.getMatchFuture().complete(result);
+            }
+        } catch (Exception e) {
+            System.out.println("Error completing future for player " + player.getName() + ": " + e.getMessage());
         }
     }
 
@@ -502,6 +533,17 @@ public class MatchmakingService {
         } catch (Exception e) {
             System.out.println("Error sending waiting message: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void sendErrorToPlayer(String sessionId, String error) {
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "MATCH_ERROR");
+            message.put("message", error);
+            messagingTemplate.convertAndSendToUser(sessionId, "/queue/match", message);
+        } catch (Exception e) {
+            System.out.println("Error sending error message: " + e.getMessage());
         }
     }
 

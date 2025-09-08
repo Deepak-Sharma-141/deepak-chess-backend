@@ -27,6 +27,14 @@ public class MatchmakingController {
             String playerName = request.get("playerName");
             String type = request.get("type");
 
+            System.out.println("=== MATCHMAKING DEBUG ===");
+            System.out.println("Session ID: " + sessionId);
+            System.out.println("Player Name: " + playerName);
+            System.out.println("Request Type: " + type);
+            System.out.println("Current Queue Size: " + matchmakingService.getQueueStatus().get("waitingPlayers"));
+            System.out.println("========================");
+
+
             System.out.println("Random match request from " + playerName + " (session: " + sessionId + ")");
 
             if (playerName == null || playerName.trim().isEmpty()) {
@@ -40,6 +48,7 @@ public class MatchmakingController {
             }
 
             // Start matchmaking process (this is async)
+            System.out.println("Starting matchmaking for: " + playerName);
             matchmakingService.findRandomMatch(sessionId, playerName.trim())
                     .thenAccept(result -> {
                         // This will be called when match is found, cancelled, or timeout occurs
@@ -66,6 +75,12 @@ public class MatchmakingController {
             e.printStackTrace();
             sendErrorMessage(principal.getName(), "Server error occurred");
         }
+    }
+
+    @GetMapping("/api/matchmaking/status")
+    @ResponseBody
+    public Map<String, Object> getMatchmakingStatus() {
+        return matchmakingService.getQueueStatus();
     }
 
     @MessageMapping("/cancelRandomMatch")
