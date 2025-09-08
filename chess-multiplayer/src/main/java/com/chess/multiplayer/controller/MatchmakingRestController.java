@@ -14,7 +14,7 @@ class MatchmakingRestController {
 
     @Autowired
     private MatchmakingService matchmakingService;
-    
+
 
     @PostMapping("/cancel/{sessionId}")
     public Map<String, Object> cancelMatchmaking(@PathVariable String sessionId) {
