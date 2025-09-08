@@ -14,11 +14,7 @@ class MatchmakingRestController {
 
     @Autowired
     private MatchmakingService matchmakingService;
-
-    @GetMapping("/status")
-    public Map<String, Object> getMatchmakingStatus() {
-        return matchmakingService.getQueueStatus();
-    }
+    
 
     @PostMapping("/cancel/{sessionId}")
     public Map<String, Object> cancelMatchmaking(@PathVariable String sessionId) {
